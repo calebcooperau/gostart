@@ -1,0 +1,84 @@
+package application
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"gostart/config"
+	"gostart/internal/database"
+	"gostart/internal/domain"
+	"gostart/internal/middleware"
+	"gostart/migrations"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+type Application struct {
+	Logger       *log.Logger
+	Gin          *gin.Engine
+	Config       *config.Config
+	Server       *http.Server
+	Database     *sql.DB
+	Repositories *domain.Repositories
+	Middlewares  *middleware.Middlewares
+}
+
+func NewApplication(cfg *config.Config) (*Application, error) {
+	pgDB, err := database.Open()
+	if err != nil {
+		return nil, err
+	}
+
+	err = database.MigrateFS(pgDB, migrations.FS, ".")
+	if err != nil {
+		panic(err)
+	}
+
+	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	if cfg.HttpConfig.IsProduction {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
+
+	engine := gin.New()
+	engine.Use(gin.Logger(), gin.Recovery())
+	engine.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:4200"}, // Allow frontend URL (Angular app)
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With"},
+		AllowCredentials: true,
+	}))
+
+	repositories := domain.RegisterRepositories(pgDB)
+	middlewares := middleware.RegisterMiddlewares(repositories)
+	server := &http.Server{
+		Addr:         cfg.HttpConfig.Port,
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		Handler:      engine,
+	}
+	app := &Application{
+		Logger:       logger,
+		Gin:          engine,
+		Config:       cfg,
+		Server:       server,
+		Database:     pgDB,
+		Repositories: repositories,
+		Middlewares:  middlewares,
+	}
+
+	return app, nil
+}
+
+func (app *Application) Start() {
+	err := app.Server.ListenAndServe()
+	if err != nil {
+		app.Logger.Fatal(err)
+	}
+}
