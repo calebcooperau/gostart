@@ -4,20 +4,19 @@ import (
 	"log"
 
 	"gostart/internal/domain"
-	authRoutes "gostart/internal/features/authentication/routes"
-	health_check_handler "gostart/internal/features/health_check"
-	userRoutes "gostart/internal/features/user/routes"
+	authRoutes "gostart/internal/domain/authentication/api/routes"
+	userRoutes "gostart/internal/domain/user/api/routes"
 	"gostart/internal/middleware"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func SetupRoutes(engine *gin.Engine, repos *domain.Repositories, middlewares *middleware.Middlewares, logger *log.Logger) {
+func SetupRoutes(engine *gin.Engine, db *pgxpool.Pool, repos *domain.Repositories, middlewares *middleware.Middlewares, logger *log.Logger) {
 	router := engine
-	router.GET("/health", health_check_handler.GetApplicationHealthCheck)
 	router.Use(middlewares.AuthenticationMiddleware.Authenticate())
 	{
 		authRoutes.RegisterAuthenticationRoutes(router, repos.AuthenticationRepository, logger)
-		userRoutes.RegisterUserRoutes(router, repos.UserRepository, middlewares.AuthenticationMiddleware, logger)
+		userRoutes.RegisterUserRoutes(router, db, repos.UserRepository, middlewares.AuthenticationMiddleware, logger)
 	}
 }

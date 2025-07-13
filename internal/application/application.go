@@ -1,7 +1,6 @@
 package application
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +14,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type Application struct {
@@ -22,18 +23,21 @@ type Application struct {
 	Gin          *gin.Engine
 	Config       *config.Config
 	Server       *http.Server
-	Database     *sql.DB
+	Database     *pgxpool.Pool
 	Repositories *domain.Repositories
 	Middlewares  *middleware.Middlewares
 }
 
 func NewApplication(cfg *config.Config) (*Application, error) {
-	pgDB, err := database.Open()
+	pool, err := database.OpenDBPool()
 	if err != nil {
 		return nil, err
 	}
 
-	err = database.MigrateFS(pgDB, migrations.FS, ".")
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	defer sqlDB.Close()
+
+	err = database.MigrateFS(sqlDB, migrations.FS, ".")
 	if err != nil {
 		panic(err)
 	}
@@ -54,7 +58,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		AllowCredentials: true,
 	}))
 
-	repositories := domain.RegisterRepositories(pgDB)
+	repositories := domain.RegisterRepositories(pool)
 	middlewares := middleware.RegisterMiddlewares(repositories)
 	server := &http.Server{
 		Addr:         cfg.HttpConfig.Port,
@@ -68,7 +72,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		Gin:          engine,
 		Config:       cfg,
 		Server:       server,
-		Database:     pgDB,
+		Database:     pool,
 		Repositories: repositories,
 		Middlewares:  middlewares,
 	}

@@ -20,9 +20,9 @@ type RefreshToken struct {
 // swap this string for something from env
 var jwtSecret = []byte("secret-key")
 
-func GenerateJWT(userId uuid.UUID, email string, scopes string, timeToLive time.Duration) (string, error) {
+func GenerateJWT(userID uuid.UUID, email string, scopes string, timeToLive time.Duration) (string, error) {
 	claims := jwt.MapClaims{
-		"sub":    userId,
+		"sub":    userID,
 		"email":  email,
 		"exp":    time.Now().Add(timeToLive).Unix(),
 		"scopes": scopes,

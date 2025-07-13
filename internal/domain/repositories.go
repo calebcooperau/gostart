@@ -1,10 +1,9 @@
 package domain
 
 import (
-	"database/sql"
-
-	"gostart/internal/domain/authentication"
-	"gostart/internal/domain/user"
+	"github.com/jackc/pgx/v5/pgxpool"
+	authentication "gostart/internal/domain/authentication/repository"
+	user "gostart/internal/domain/user/repository"
 )
 
 type Repositories struct {
@@ -12,7 +11,7 @@ type Repositories struct {
 	AuthenticationRepository authentication.AuthenticationRepository
 }
 
-func RegisterRepositories(db *sql.DB) *Repositories {
+func RegisterRepositories(db *pgxpool.Pool) *Repositories {
 	userRepository := user.NewUserSqlRepository(db)
 	authenticationRepository := authentication.NewAuthenticationSqlRepository(db)
 	return &Repositories{

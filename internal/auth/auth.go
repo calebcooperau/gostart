@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
-	"github.com/markbates/goth/providers/google"
+	"github.com/markbates/goth/providers/github"
 )
 
 const (
@@ -30,6 +30,6 @@ func NewAuthentication(cfg *config.Config) {
 	gothic.Store = store
 
 	goth.UseProviders(
-		google.New(cfg.AuthenticationConfig.GoogleClientId, cfg.AuthenticationConfig.GoogleClientSecret, "http://localhost:42069/auth/google/callback"),
+		github.New(cfg.AuthenticationConfig.GoogleClientId, cfg.AuthenticationConfig.GoogleClientSecret, "http://localhost:42069/auth/github/callback"),
 	)
 }

@@ -5,32 +5,33 @@ import (
 	"strings"
 
 	"gostart/internal/auth/token"
-	"gostart/internal/domain/authentication"
+	"gostart/internal/domain/authentication/entities"
+	"gostart/internal/domain/authentication/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type AuthenticationMiddleware struct {
-	AuthenticationRepository authentication.AuthenticationRepository
+	AuthenticationRepository repository.AuthenticationRepository
 }
 
 type contextKey string
 
 const AuthUserContextKey = contextKey("authUser")
 
-func SetAuthUser(context *gin.Context, authUser *authentication.AuthUser) {
+func SetAuthUser(context *gin.Context, authUser *entities.AuthUser) {
 	context.Set(string(AuthUserContextKey), authUser)
 }
 
-func GetAuthUser(context *gin.Context) *authentication.AuthUser {
+func GetAuthUser(context *gin.Context) *entities.AuthUser {
 	value, exists := context.Get(string(AuthUserContextKey))
 	if !exists {
 		// if we dont have request that has the value of an auth user (even anonymous) something is wrong
 		// eg, bad actor call
 		panic("missing user in request")
 	}
-	authUser, ok := value.(*authentication.AuthUser)
+	authUser, ok := value.(*entities.AuthUser)
 	if !ok {
 		panic("invalid auth user type in context")
 	}
@@ -43,7 +44,7 @@ func (authenticationMiddleware *AuthenticationMiddleware) Authenticate() gin.Han
 		authHeader := context.GetHeader("Authorization")
 
 		if authHeader == "" {
-			SetAuthUser(context, authentication.AnonymousUser)
+			SetAuthUser(context, entities.AnonymousUser)
 			context.Next()
 			return
 		}
@@ -61,14 +62,13 @@ func (authenticationMiddleware *AuthenticationMiddleware) Authenticate() gin.Han
 			return
 		}
 
-		authUserId, err := uuid.Parse(claims["sub"].(string))
+		authUserID, err := uuid.Parse(claims["sub"].(string))
 		if err != nil {
 			context.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid user id in token"})
 			return
 		}
 
-		authUser, err := authenticationMiddleware.AuthenticationRepository.GetAuthUserById(authUserId)
-
+		authUser, err := authenticationMiddleware.AuthenticationRepository.FindAuthUserByID(context.Request.Context(), authUserID)
 		SetAuthUser(context, authUser)
 		context.Next()
 	}

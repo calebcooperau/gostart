@@ -18,6 +18,6 @@ func main() {
 		panic(err)
 	}
 	defer app.Database.Close()
-	routes.SetupRoutes(app.Gin, app.Repositories, app.Middlewares, app.Logger)
+	routes.SetupRoutes(app.Gin, app.Database, app.Repositories, app.Middlewares, app.Logger)
 	app.Start()
 }

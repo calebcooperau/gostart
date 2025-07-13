@@ -1,23 +1,26 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io/fs"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3"
 )
 
-func Open() (*sql.DB, error) {
-	db, err := sql.Open("pgx", "host=localhost user=postgres password=postgres dbname=postgres port=5432 sslmode=disable")
+func OpenDBPool() (*pgxpool.Pool, error) {
+	ctx := context.Background()
+	dsn := "postgresql://postgres:postgres@localhost:5432/postgres"
+
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		return nil, fmt.Errorf("db: open %w", err)
+		return nil, fmt.Errorf("pgxpool: New%w", err)
 	}
 
 	fmt.Println("Connected to Database")
-
-	return db, nil
+	return pool, nil
 }
 
 func MigrateFS(db *sql.DB, migrationsFS fs.FS, dir string) error {

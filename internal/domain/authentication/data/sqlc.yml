@@ -1,0 +1,23 @@
+version: "2"
+servers:
+  - engine: "postgresql"
+    uri: "postgresql://postgres:postgres@localhost:5432/postgres"
+sql:
+  - engine: "postgresql"
+    queries: "./authentication_queries.sql"
+    schema: "../../../../migrations"
+    database:
+      managed: true
+    gen:
+      go:
+        package: data
+        sql_package: "pgx/v5"
+        out: "./"
+        emit_pointers_for_null_types: true
+        output_db_file_name: "authentication_db.go"
+        output_models_file_name: "deleteme.go"
+        overrides:
+          - db_type: "uuid"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
